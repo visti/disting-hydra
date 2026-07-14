@@ -435,9 +435,9 @@
   <canvas class="rule" aria-hidden="true"></canvas>
   <div class="screen-wrap">
     <canvas id="screen" width="256" height="64"></canvas>
-    <div class="screen-cap">PERFORMANCE VIEW — chord root, tracked input note, active voices</div>
+    <div class="screen-cap">PERFORMANCE VIEW — the hydra pulses with the output; root, tracked note, voice meters</div>
   </div>
-  <p><b>R:</b> the current chord root (note + octave). <b>In:</b> the pitch the tracker is hearing (only shown when Track is on). The voice bars show the chord relative to the input; the waveform at the bottom is the live input feeding the buffer.</p>
+  <p>The <b>hydra</b> fills the right of the screen and brightens with the chord's output level — it visibly sings as the voices sound. On the left, <b>R</b> is the current chord root (note + octave) and <b>In</b> is the pitch the tracker is hearing (shown when Track is on). The <b>voice meters</b> — one bar per voice, the many heads — track each voice's low-pass-gate envelope (or sit full when the LPG is off).</p>
 </section>
 
 <section id="params">
@@ -625,31 +625,27 @@
       for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) ctx.fillText(label,x+dx,y+dy);
       ctx.fillStyle=colour; ctx.fillText(label,x,y);
     }
-    // three voice bars (a triad), brighter = louder
-    var voices=[{y:20,g:0.55,lbl:'●'},{y:30,g:0.8,lbl:'●'},{y:40,g:1.0,lbl:'●'}];
-    for(var i=0;i<voices.length;i++){
-      var g=Math.round(0x55+0x88*voices[i].g);
-      ctx.fillStyle='rgb('+g+','+g+','+g+')';
-      ctx.fillRect(150,voices[i].y,90,2);
-      ctx.fillRect(150,voices[i].y-1,2,4);
+    // the creature on the right, dim (it pulses with the output on the module)
+    if(maskImg){
+      var CH=58, CW=Math.round(CH*maskImg.width/maskImg.height), CX=256-CW-2, CY=(64-CH)/2;
+      ctx.save(); ctx.globalAlpha=0.72; ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(maskImg, CX, CY, CW, CH); ctx.restore();
     }
-    // live input waveform along the bottom
-    ctx.fillStyle='#a8321f';
-    for(var b2=0;b2<128;b2++){
-      var v=Math.abs(Math.sin(b2*0.21)*0.5+Math.sin(b2*0.63)*0.3);
-      var hh=Math.max(1,Math.round(v*8));
-      ctx.fillRect(b2*2,58-hh,1,hh);
+    // readouts + per-voice level meters on the left
+    outlinedText(4,12,'R  C3','#e8e8e8');
+    outlinedText(4,26,'In E4','#e8e8e8');
+    outlinedText(4,40,'voices','#bdbdbd');
+    var lv=[0.9,0.6,0.3];
+    for(var v=0;v<lv.length;v++){
+      var x=4+v*10, hh=1+Math.round(lv[v]*18);
+      ctx.strokeStyle='#3a3a3a'; ctx.strokeRect(x+0.5,42.5,6,19);
+      ctx.fillStyle='#d4d4d4'; ctx.fillRect(x,61-hh,7,hh);
     }
-    // labels
-    outlinedText(6,14,'Hydra','#f0e6d0');
-    outlinedText(6,30,'R: C3','#ff5a4d');
-    outlinedText(6,42,'3 voices','#c9b78d');
-    outlinedText(250,14,'In: E','#ff5a4d','right');
   }
 
   function drawAll(){ drawBanner(); drawRules(); drawScreen(); }
   drawAll();
-  prepAssets(drawBanner);
+  prepAssets(function(){ drawBanner(); drawScreen(); });
   var t;
   window.addEventListener('resize',function(){ clearTimeout(t); t=setTimeout(drawAll,150); });
 })();

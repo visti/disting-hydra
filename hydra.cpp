@@ -22,6 +22,7 @@
 #include <string.h>
 #include <new>
 #include <distingnt/api.h>
+#include "hydra_glyph.h"
 
 // ---------------------------------------------------------------------------
 // constants
@@ -370,6 +371,7 @@ struct _hydra : public _NT_algorithm
 	bool		trackOn, grainSync;
 	float		vibDepthCents, lfoInc;
 	float		envFilterAmt, envFollowCoef;
+	float		vu, vuCoef;			// smoothed output level, for the screen
 
 	// filter + follower state
 	float		svLowL, svBandL, svLowR, svBandR;
@@ -535,6 +537,8 @@ _NT_algorithm*	construct( const _NT_algorithmMemoryPtrs& ptrs, const _NT_algorit
 		alg->lagMax = kAnaLen - kAnaWindow - 2;
 	alg->trackedNote = 60.0f;
 	alg->trackedPeriod = 0.0f;
+	alg->vu = 0.0f;
+	alg->vuCoef = 1.0f - expf( -1.0f / ( (float)NT_globals.sampleRate * 0.05f ) );
 
 	for ( int i=0; i<kWinSize; ++i )
 		alg->win[i] = 0.5f - 0.5f * cosf( 6.2831853f * i / kWinSize );
@@ -604,6 +608,7 @@ static void updateCoeffs( _hydra* pThis )
 	pThis->lfoInc = ( pThis->v[ kParamVibRate ] / 10.0f ) / fs;	// scaling10 -> Hz
 	pThis->envFilterAmt = pThis->v[ kParamEnvFilter ] / 100.0f;
 	pThis->envFollowCoef = 1.0f - expf( -1.0f / ( fs * 0.02f ) );	// 20ms follower
+	pThis->vuCoef = 1.0f - expf( -1.0f / ( fs * 0.05f ) );			// 50ms screen meter
 }
 
 void	parameterChanged( _NT_algorithm* self, int p )
@@ -728,6 +733,7 @@ void 	step( _NT_algorithm* self, float* busFrames, int numFramesBy4 )
 	int fType = pThis->filterType;
 	float fCoef = pThis->fCoef, fDamp = pThis->fDamp;
 	float glide = pThis->glideCoef;
+	float vuCoef = pThis->vuCoef;
 	float vibScale = pThis->vibDepthCents * kLn2over1200;
 	float lfoInc = pThis->lfoInc;
 	float envFilterAmt = pThis->envFilterAmt, envFollowCoef = pThis->envFollowCoef;
@@ -947,6 +953,7 @@ void 	step( _NT_algorithm* self, float* busFrames, int numFramesBy4 )
 		}
 		wetL *= voiceScale;
 		wetR *= voiceScale;
+		pThis->vu += ( 0.5f * ( fabsf(wetL) + fabsf(wetR) ) - pThis->vu ) * vuCoef;
 
 		if ( fType != kFilterOff )
 		{
@@ -980,38 +987,76 @@ void 	step( _NT_algorithm* self, float* busFrames, int numFramesBy4 )
 // ---------------------------------------------------------------------------
 // display
 
+// write one 4-bit pixel into the screen buffer (two pixels per byte)
+static inline void hydraSetPix( int x, int y, int v )
+{
+	if ( x < 0 || y < 0 || x >= 256 || y >= 64 ) return;
+	int idx = y * 128 + ( x >> 1 );
+	uint8_t b = NT_screen[ idx ];
+	if ( x & 1 ) b = ( b & 0xF0 ) | ( v & 0x0F );
+	else         b = ( b & 0x0F ) | ( ( v & 0x0F ) << 4 );
+	NT_screen[ idx ] = b;
+}
+
+// append a note name + octave (e.g. "C3") to buff at position n; returns new n
+static int appendNote( char* buff, int n, int note )
+{
+	static const char* const names[12] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B" };
+	int pc = note % 12; if ( pc < 0 ) pc += 12;
+	for ( const char* p=names[pc]; *p; ++p ) buff[n++] = *p;
+	char ob[8]; int ol = NT_intToString( ob, note / 12 - 1 );
+	for ( int k=0; k<ol; ++k ) buff[n++] = ob[k];
+	return n;
+}
+
 bool	draw( _NT_algorithm* self )
 {
 	_hydra* pThis = (_hydra*)self;
-	static const char* const names[12] = { "C","C#","D","D#","E","F","F#","G","G#","A","A#","B" };
 
-	NT_drawText( 10, 20, "Hydra" );
+	// the hydra, on the right, its brightness pulsing with the output level
+	float lvl = pThis->vu * 3.0f; if ( lvl > 1.0f ) lvl = 1.0f;
+	float bscale = 0.42f + 0.58f * lvl;
+	int X0 = 256 - kHydraGlyphW - 2;
+	int Y0 = ( 64 - kHydraGlyphH ) / 2;
+	for ( int gy=0; gy<kHydraGlyphH; ++gy )
+		for ( int gx=0; gx<kHydraGlyphW; ++gx )
+		{
+			uint8_t L = kHydraGlyph[ gy*kHydraGlyphW + gx ];
+			if ( !L ) continue;
+			int b = (int)( L * bscale + 0.5f );
+			if ( b < 1 ) b = 1;
+			if ( b > 15 ) b = 15;
+			hydraSetPix( X0+gx, Y0+gy, b );
+		}
 
-	int rn = pThis->dispRoot;
-	int pc = rn % 12; if ( pc < 0 ) pc += 12;
-	int oct = rn / 12 - 1;
+	// readouts on the left
 	char buff[ 24 ];
 	int n = 0;
-	buff[n++] = 'R'; buff[n++] = ':'; buff[n++] = ' ';
-	for ( const char* p=names[pc]; *p; ++p ) buff[n++] = *p;
-	char ob[8]; int ol = NT_intToString( ob, oct );
-	for ( int k=0; k<ol; ++k ) buff[n++] = ob[k];
-	buff[n] = 0;
-	NT_drawText( 10, 40, buff );
-
-	NT_intToString( buff, pThis->dispVoices );
-	NT_drawText( 10, 55, buff );
-	NT_drawText( 24, 55, "voices" );
+	buff[n++]='R'; buff[n++]=' ';
+	n = appendNote( buff, n, pThis->dispRoot );
+	buff[n]=0;
+	NT_drawText( 4, 12, buff );
 
 	if ( pThis->trackOn )
 	{
-		int tn = roundToInt( pThis->trackedNote );
-		int tpc = tn % 12; if ( tpc < 0 ) tpc += 12;
-		n = 0;
-		buff[n++] = 'I'; buff[n++] = 'n'; buff[n++] = ':'; buff[n++] = ' ';
-		for ( const char* p=names[tpc]; *p; ++p ) buff[n++] = *p;
-		buff[n] = 0;
-		NT_drawText( 140, 40, buff );
+		n = 0; buff[n++]='I'; buff[n++]='n'; buff[n++]=' ';
+		n = appendNote( buff, n, roundToInt( pThis->trackedNote ) );
+		buff[n]=0;
+		NT_drawText( 4, 26, buff );
+	}
+
+	// per-voice level meters (the many heads): LPG envelope, or full when LPG off
+	bool lpgOn = pThis->v[ kParamLpgMode ] == kLpgOn;
+	NT_drawText( 4, 38, "voices" );
+	for ( int v=0; v<pThis->dispVoices; ++v )
+	{
+		float e = lpgOn ? pThis->voice[v].env : 1.0f;
+		if ( e < 0.0f ) e = 0.0f;
+		if ( e > 1.0f ) e = 1.0f;
+		int x = 4 + v*10;
+		int h = 1 + (int)( e * 18.0f );
+		NT_drawShapeI( kNT_box, x, 42, x+6, 61, 3 );			// meter frame
+		NT_drawShapeI( kNT_rectangle, x, 61-h, x+6, 61, 13 );	// level fill
 	}
 
 	return false;
