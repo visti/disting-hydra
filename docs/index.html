@@ -58,6 +58,7 @@
     padding:0 28px;
     pointer-events:none;
   }
+  @media (min-width:760px){ .hero-inner{ padding-right:340px } }
   #wordmark{
     font-family:var(--display);
     font-size:60px;
@@ -553,39 +554,66 @@
     ctx.putImageData(img,0,0);
   }
 
-  // ---- hero banner: red-on-yellow dither + the creature on the right ------
-  var creature=null;
+  // ---- hero banner: red-on-yellow dither, cleared behind the creature -----
+  var creature=null, sil=null, SILW=0, SILH=0;
+  // build a dilated silhouette mask from the creature's alpha, so the dither
+  // field can be knocked out behind (and just around) the shape
+  function buildSil(){
+    var o=document.createElement('canvas'); o.width=creature.width; o.height=creature.height;
+    var oc=o.getContext('2d'); oc.drawImage(creature,0,0);
+    var d; try{ d=oc.getImageData(0,0,creature.width,creature.height).data; }catch(e){ return; }
+    SILW=creature.width; SILH=creature.height;
+    var base=new Uint8Array(SILW*SILH);
+    for(var i=0;i<SILW*SILH;i++) base[i]=d[i*4+3]>40?1:0;
+    sil=new Float32Array(SILW*SILH);
+    var R=6;
+    for(var y=0;y<SILH;y++) for(var x=0;x<SILW;x++){
+      var m=0;
+      for(var dy=-R;dy<=R&&m<1;dy++) for(var dx=-R;dx<=R;dx++){
+        var nx=x+dx,ny=y+dy; if(nx<0||ny<0||nx>=SILW||ny>=SILH) continue;
+        if(base[ny*SILW+nx]){ var r=Math.max(Math.abs(dx),Math.abs(dy)); var v=(r<=3)?1:0.5; if(v>m) m=v; if(m>=1) break; }
+      }
+      sil[y*SILW+x]=m;
+    }
+  }
   function drawBanner(){
     var cv=document.getElementById('banner'); if(!cv) return;
     var scale=3;
     var w=Math.ceil(cv.clientWidth/scale)||354, h=Math.ceil((cv.clientHeight||290)/scale);
+    var FW=w*scale, FH=h*scale;
+    var wide=cv.clientWidth>=760;
+    // creature rect (full-res), right-anchored, standing on the horizon
+    var ch=Math.round(FH*0.94), cw=creature?Math.round(ch*creature.width/creature.height):0;
+    var cx=FW-cw-Math.round(FW*0.03), cy=FH-ch;
     var off=document.createElement('canvas'); off.width=w; off.height=h;
     var octx=off.getContext('2d');
-    // keep the wordmark zone (left, vertically centred) calmer
+    // reserve the wordmark + subtitle zone (left, vertically centred)
     function textClear(x,y,H){
-      var rx=250, up=32, dn=18, fall=10;
+      var rx=250, up=30, dn=24, fall=12;
       var fx=(rx-x)/fall, dyv=y-H*0.5;
       var fy=Math.min((dyv+up)/fall,(dn-dyv)/fall);
       var s=Math.min(1,Math.max(0,Math.min(fx,fy)));
-      return 1-s*0.9;
+      return 1-s*0.92;
+    }
+    // clear the dither where the creature sits (dilated silhouette)
+    function beastClear(x,y){
+      if(!(wide&&sil&&cw)) return 1;
+      var sx=Math.round((x*scale-cx)/cw*SILW), sy=Math.round((y*scale-cy)/ch*SILH);
+      if(sx<0||sy<0||sx>=SILW||sy>=SILH) return 1;
+      return 1-sil[sy*SILW+sx]*0.96;
     }
     // yellow field with red dither rising toward a horizon band
     ditherField(octx,w,h,'#f0e020','#e11224',function(x,y,W,H){
       var g=(y/H)*0.55-0.16;
       var band=Math.exp(-Math.pow((y-H*0.72)/(H*0.13),2))*0.34;
-      return Math.max(0,g+band)*textClear(x,y,H);
+      return Math.max(0,g+band)*textClear(x,y,H)*beastClear(x,y);
     });
-    cv.width=w*scale; cv.height=h*scale;
+    cv.width=FW; cv.height=FH;
     var ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
-    ctx.drawImage(off,0,0,cv.width,cv.height);
-    // the creature stands on the right, clear of the wordmark
-    if(creature){
-      var ch=Math.round(cv.height*0.94), cw=Math.round(ch*creature.width/creature.height);
-      ctx.imageSmoothingEnabled=false;
-      ctx.drawImage(creature, cv.width-cw-Math.round(cv.width*0.03), cv.height-ch, cw, ch);
-    }
+    ctx.drawImage(off,0,0,FW,FH);
+    if(wide&&creature){ ctx.imageSmoothingEnabled=false; ctx.drawImage(creature,cx,cy,cw,ch); }
   }
-  function prepCreature(done){ var im=new Image(); im.onload=function(){ creature=im; done(); }; im.src='hydra.png'; }
+  function prepCreature(done){ var im=new Image(); im.onload=function(){ creature=im; buildSil(); done(); }; im.src='hydra.png'; }
 
   // ---- section rules: dithered density ramps ------------------------------
   function drawRules(){
