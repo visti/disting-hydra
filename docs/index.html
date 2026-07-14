@@ -292,16 +292,15 @@
   <p>Hydra is a CV-controlled audio chord generator: one head becomes many. It takes a single input and harmonises it into a chord <em>by audio</em> — writing the signal into a buffer and reading it back through two to four granular pitch-shifters, each a transposed copy of the input. A pitch tracker measures what the input is actually playing, so every voice lands on an exact target note. Feed it a monophonic source and pick a chord; feed it a drone and freeze it into an evolving pad.</p>
   <p class="soft">Sibling to <a href="https://visti.github.io/disting-chimera/" target="_blank" rel="noopener">Chimera</a>. The freeze smear borrows a trick from <a href="https://github.com/essej/paulxstretch" target="_blank" rel="noopener">PaulXStretch</a>.</p>
 
-  <pre class="flow"><b>IN</b> ─┬─ dry ───────────────────────────────────────────────┐
-    │                                                       │
-    └─► mono ─► <b>ring buffer</b> ─► <em>pitch tracker</em> ──┐              │
-                    │        root+scale ◄─── <em>Pitch CV</em>  │              ▼
-                    ▼                                         ├─ voice 1 <em>root/bass</em> ─► <em>LPG</em> ─┐
-        each voice shift = <b>voiceNote − inputNote</b>              ├─ voice 2 ───────────► <em>LPG</em> ─┼─ pan ─► <em>filter</em> ─► mix ─► <b>OUT L/R</b>
-                                                              ├─ voice 3 ───────────► <em>LPG</em> ─┤
-                                                              └─ voice 4 ───────────► <em>LPG</em> ─┘
-                    per-voice ─► <b>Pitch CV</b> · <b>Gate</b> · individual audio out
-    motion: <em>freeze</em> ─► <em>smear</em> · <em>strum</em> · <em>vibrato</em> · <em>env→filter</em></pre>
+  <pre class="flow"><b>IN</b> ─► mono ─► <b>ring buffer</b>                         ┐
+   <em>pitch tracker</em> ─► <em>root+scale</em> ◄─ <em>Pitch CV</em>        │
+        shift per voice = <b>voiceNote − inputNote</b>   │
+                                                  ├─ voice 1 root/bass ─► <em>LPG</em> ─┐
+                                                  ├─ voice 2 ───────────► <em>LPG</em> ─┤
+                                                  ├─ voice 3 ───────────► <em>LPG</em> ─┼─ <em>pan</em> ─► <em>filter</em> ─► <em>mix</em> (+dry) ─► <b>OUT L/R</b>
+                                                  └─ voice 4 ───────────► <em>LPG</em> ─┘
+        per-voice ─► <em>Pitch CV</em> · Gate · individual audio out
+   motion: <em>freeze</em> ─► <em>smear</em> · <em>strum</em> · <em>vibrato</em> · <em>env→filter</em></pre>
 
   <div class="heads">
     <div class="head-card"><div class="hn">Track</div><p>A monophonic pitch tracker measures the input's fundamental so voices land on real notes, not fixed intervals.</p></div>
