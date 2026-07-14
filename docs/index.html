@@ -6,7 +6,15 @@
 <title>Hydra — Manual</title>
 </head>
 <body>
+<!-- Wordmark/display font: "Alagard" by Hewett Tsoi (free) — as used by Chimera -->
 <style>
+  @font-face{
+    font-family:'Alagard';
+    src:url('alagard.ttf') format('truetype');
+    font-weight:normal;
+    font-style:normal;
+    font-display:swap;
+  }
   :root{
     --bg:#f6edcf;
     --ink:#2a1a0c;
@@ -17,6 +25,7 @@
     --accent:#e11224;
     --hot:#f0e020;
     --mono:ui-monospace,"Cascadia Mono","JetBrains Mono",Consolas,"Liberation Mono",monospace;
+    --display:'Alagard',ui-monospace,Consolas,monospace;
   }
   *{box-sizing:border-box}
   html{background:var(--bg)}
@@ -49,7 +58,17 @@
     padding:0 28px;
     pointer-events:none;
   }
-  #wordmark{height:52px;width:auto;display:block}
+  #wordmark{
+    font-family:var(--display);
+    font-size:60px;
+    line-height:1;
+    color:var(--accent);
+    letter-spacing:3px;
+    text-shadow:3px 3px 0 #6e0a12;
+    -webkit-font-smoothing:none;
+    font-smooth:never;
+  }
+  @media (max-width:600px){ #wordmark{font-size:42px} }
   .tagline{
     margin-top:10px;
     font-size:12px;
@@ -88,13 +107,15 @@
 
   /* ---------- type ---------- */
   h2{
-    font-size:16px;
-    font-weight:700;
-    letter-spacing:.14em;
-    text-transform:uppercase;
+    font-family:var(--display);
+    font-size:23px;
+    font-weight:400;
+    letter-spacing:.03em;
     margin:64px 0 4px;
     color:var(--ink);
     text-wrap:balance;
+    -webkit-font-smoothing:none;
+    font-smooth:never;
   }
   h2::before{content:"▓▒░ ";color:var(--accent);letter-spacing:0}
   section:first-of-type h2{margin-top:8px}
@@ -237,8 +258,8 @@
 <header>
   <canvas id="banner" width="1060" height="290" aria-hidden="true"></canvas>
   <div class="hero-inner">
-    <canvas id="wordmark" aria-label="HYDRA"></canvas>
-    <div class="tagline">Audio chord generator · <b>Expert Sleepers Disting NT</b> · Manual</div>
+    <div id="wordmark">HYDRA</div>
+    <div class="tagline">Many-headed audio chord generator · <b>Expert Sleepers Disting NT</b> · Manual</div>
   </div>
 </header>
 
@@ -566,26 +587,6 @@
   }
   function prepCreature(done){ var im=new Image(); im.onload=function(){ creature=im; done(); }; im.src='hydra.png'; }
 
-  // ---- pixel wordmark: render HYDRA small, scale up hard --------------------
-  function drawWordmark(){
-    var cv=document.getElementById('wordmark'); if(!cv) return;
-    var px=6, base=document.createElement('canvas');
-    base.width=64; base.height=11;
-    var b=base.getContext('2d');
-    b.imageSmoothingEnabled=false;
-    b.font='bold 10px "Courier New",monospace'; b.textBaseline='top';
-    b.fillStyle='#e11224'; b.fillText('HYDRA',1,0);
-    // darker drop-shadow copy
-    var sh=document.createElement('canvas'); sh.width=base.width; sh.height=base.height;
-    var s=sh.getContext('2d'); s.drawImage(base,0,0);
-    s.globalCompositeOperation='source-in'; s.fillStyle='#6e0a12'; s.fillRect(0,0,sh.width,sh.height);
-    cv.width=(base.width+1)*px; cv.height=(base.height+1)*px;
-    var ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
-    ctx.drawImage(sh,px,px,base.width*px,base.height*px);
-    ctx.drawImage(base,0,0,base.width*px,base.height*px);
-    cv.style.height=cv.height+'px';
-  }
-
   // ---- section rules: dithered density ramps ------------------------------
   function drawRules(){
     var rules=document.querySelectorAll('canvas.rule');
@@ -634,7 +635,7 @@
     outlinedText(250,14,'In: E','#ff5a4d','right');
   }
 
-  function drawAll(){ drawBanner(); drawWordmark(); drawRules(); drawScreen(); }
+  function drawAll(){ drawBanner(); drawRules(); drawScreen(); }
   drawAll();
   prepCreature(drawBanner);
   var t;
