@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hydra — Manual</title>
+</head>
+<body>
+<style>
+  :root{
+    --bg:#f6edcf;
+    --ink:#2a1a0c;
+    --mid:#7a6544;
+    --dim:#b3a06f;
+    --line:#ddcb96;
+    --panel:#efe2b0;
+    --accent:#e11224;
+    --hot:#f0e020;
+    --mono:ui-monospace,"Cascadia Mono","JetBrains Mono",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{background:var(--bg)}
+  body{
+    margin:0;
+    font-family:var(--mono);
+    font-size:14px;
+    line-height:1.7;
+    color:var(--ink);
+    background:var(--bg);
+  }
+  ::selection{background:var(--accent);color:#fdf7e3}
+  canvas{image-rendering:pixelated}
+
+  /* ---------- hero ---------- */
+  header{
+    border-bottom:1px solid var(--line);
+    position:relative;
+    overflow:hidden;
+  }
+  #banner{display:block;width:100%;height:290px}
+  @media (max-width:600px){ #banner{height:170px} }
+  .hero-inner{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:flex-start;
+    padding:0 28px;
+    pointer-events:none;
+  }
+  #wordmark{height:52px;width:auto;display:block}
+  .tagline{
+    margin-top:10px;
+    font-size:12px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--mid);
+  }
+  .tagline b{color:var(--accent);font-weight:400}
+
+  /* ---------- shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns:210px minmax(0,1fr);
+    max-width:1060px;
+    margin:0 auto;
+  }
+  nav{border-right:1px solid var(--line);padding:28px 0}
+  nav .navbox{position:sticky;top:0;padding:16px 20px}
+  nav .navtitle{
+    font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:12px;
+  }
+  nav a{
+    display:block;
+    color:var(--mid);
+    text-decoration:none;
+    font-size:12px;
+    padding:4px 0;
+    border-left:2px solid transparent;
+    padding-left:10px;
+    margin-left:-12px;
+  }
+  nav a:hover{color:var(--ink);border-left-color:var(--dim)}
+  nav a:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+  main{padding:36px 40px 90px;min-width:0}
+
+  /* ---------- type ---------- */
+  h2{
+    font-size:16px;
+    font-weight:700;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    margin:64px 0 4px;
+    color:var(--ink);
+    text-wrap:balance;
+  }
+  h2::before{content:"▓▒░ ";color:var(--accent);letter-spacing:0}
+  section:first-of-type h2{margin-top:8px}
+  h3{
+    font-size:12.5px;
+    font-weight:700;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:34px 0 8px;
+  }
+  p{max-width:66ch;margin:12px 0;color:var(--ink)}
+  p.soft, li.soft{color:var(--mid)}
+  small,.fine{font-size:11.5px;color:var(--mid)}
+  a{color:var(--accent)}
+  code,kbd{
+    font-family:var(--mono);
+    font-size:12.5px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:1px 5px;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  kbd{color:var(--accent)}
+  .rule{display:block;width:100%;height:8px;margin:10px 0 22px}
+
+  /* ---------- panels & flow ---------- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:16px 20px;
+    margin:18px 0;
+    max-width:72ch;
+  }
+  .panel .label{
+    font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:8px;
+  }
+  pre.flow{
+    margin:18px 0;
+    padding:18px 20px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--mid);
+    font-size:12.5px;
+    line-height:1.55;
+    overflow-x:auto;
+  }
+  pre.flow b{color:var(--ink);font-weight:400}
+  pre.flow em{color:var(--accent);font-style:normal}
+
+  /* ---------- screen mock ---------- */
+  .screen-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:18px;
+    margin:20px 0;
+    display:inline-block;
+  }
+  #screen{display:block;width:512px;max-width:100%;height:auto;background:#000}
+  .screen-cap{margin-top:10px;font-size:11px;color:var(--dim);letter-spacing:.08em}
+
+  /* ---------- tables ---------- */
+  .tblwrap{overflow-x:auto;margin:16px 0;max-width:100%}
+  table{border-collapse:collapse;font-size:12.5px;min-width:520px}
+  th{
+    text-align:left;
+    font-size:10px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--dim);
+    font-weight:400;
+    padding:6px 18px 6px 0;
+    border-bottom:1px solid var(--line);
+  }
+  td{
+    padding:7px 18px 7px 0;
+    border-bottom:1px solid var(--line);
+    color:var(--mid);
+    vertical-align:top;
+    font-variant-numeric:tabular-nums;
+  }
+  td:first-child{color:var(--ink);white-space:nowrap}
+  td.rng{white-space:nowrap;color:var(--dim)}
+  tr.grp td{
+    padding-top:20px;
+    color:var(--accent);
+    font-size:10px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    border-bottom:1px solid var(--line);
+  }
+
+  ul{max-width:66ch;padding-left:20px}
+  li{margin:6px 0;color:var(--ink)}
+  li::marker{color:var(--accent)}
+
+  .heads{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:14px;
+    max-width:76ch;
+    margin:18px 0;
+  }
+  .head-card{background:var(--panel);border:1px solid var(--line);padding:14px 16px}
+  .head-card .hn{
+    color:var(--accent);
+    font-size:12px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .head-card p{font-size:12.5px;color:var(--mid);margin:0}
+
+  footer{
+    border-top:1px solid var(--line);
+    margin-top:70px;
+    padding:22px 40px;
+    font-size:11px;
+    color:var(--dim);
+    letter-spacing:.08em;
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+
+  @media (max-width:760px){
+    .shell{grid-template-columns:1fr}
+    nav{border-right:0;border-bottom:1px solid var(--line);padding:10px 0}
+    nav .navbox{position:static;display:flex;flex-wrap:wrap;gap:2px 16px;padding:10px 20px}
+    nav .navtitle{width:100%}
+    nav a{margin-left:0;padding-left:0;border-left:0}
+    main{padding:28px 20px 70px}
+    footer{padding:20px}
+  }
+</style>
+
+<header>
+  <canvas id="banner" width="1060" height="290" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <canvas id="wordmark" aria-label="HYDRA"></canvas>
+    <div class="tagline">Audio chord generator · <b>Expert Sleepers Disting NT</b> · Manual</div>
+  </div>
+</header>
+
+<div class="shell">
+<nav aria-label="Sections">
+  <div class="navbox">
+    <div class="navtitle">Index</div>
+    <a href="#beast">The beast</a>
+    <a href="#start">Getting started</a>
+    <a href="#track">Tracking &amp; root</a>
+    <a href="#scale">Scale &amp; quantiser</a>
+    <a href="#harmony">Harmony</a>
+    <a href="#chord">The chord</a>
+    <a href="#lpg">Triggers &amp; the gate</a>
+    <a href="#motion">Motion &amp; freeze</a>
+    <a href="#tone">Grain &amp; tone</a>
+    <a href="#outs">Outputs</a>
+    <a href="#display">The display</a>
+    <a href="#params">Parameter reference</a>
+    <a href="#tips">Field notes</a>
+  </div>
+</nav>
+
+<main>
+
+<section id="beast">
+  <h2>The beast</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <p>Hydra is a CV-controlled audio chord generator: one head becomes many. It takes a single input and harmonises it into a chord <em>by audio</em> — writing the signal into a buffer and reading it back through two to four granular pitch-shifters, each a transposed copy of the input. A pitch tracker measures what the input is actually playing, so every voice lands on an exact target note. Feed it a monophonic source and pick a chord; feed it a drone and freeze it into an evolving pad.</p>
+  <p class="soft">Sibling to <a href="https://visti.github.io/disting-chimera/" target="_blank" rel="noopener">Chimera</a>. The freeze smear borrows a trick from <a href="https://github.com/essej/paulxstretch" target="_blank" rel="noopener">PaulXStretch</a>.</p>
+
+  <pre class="flow"><b>IN</b> ─┬─ dry ───────────────────────────────────────────────┐
+    │                                                       │
+    └─► mono ─► <b>ring buffer</b> ─► <em>pitch tracker</em> ──┐              │
+                    │        root+scale ◄─── <em>Pitch CV</em>  │              ▼
+                    ▼                                         ├─ voice 1 <em>root/bass</em> ─► <em>LPG</em> ─┐
+        each voice shift = <b>voiceNote − inputNote</b>          ├─ voice 2 ───────────► <em>LPG</em> ─┼─ pan ─► <em>filter</em> ─► mix ─► <b>OUT L/R</b>
+                                                              ├─ voice 3 ───────────► <em>LPG</em> ─┤
+                                                              └─ voice 4 ───────────► <em>LPG</em> ─┘
+                    per-voice ─► <b>Pitch CV</b> · <b>Gate</b> · individual audio out
+    motion: <em>freeze</em> ─► <em>smear</em> · <em>strum</em> · <em>vibrato</em> · <em>env→filter</em></pre>
+
+  <div class="heads">
+    <div class="head-card"><div class="hn">Track</div><p>A monophonic pitch tracker measures the input's fundamental so voices land on real notes, not fixed intervals.</p></div>
+    <div class="head-card"><div class="hn">Voices</div><p>2–4 granular pitch-shifters. Stack the scale, or spell an explicit chord type.</p></div>
+    <div class="head-card"><div class="hn">Freeze</div><p>Stop the buffer and the voices sustain forever. Smear decorrelates the grains into a pad.</p></div>
+    <div class="head-card"><div class="hn">Chord brain</div><p>Each voice also emits 1V/oct pitch and a gate, so Hydra drives external voices with the same chord.</p></div>
+  </div>
+</section>
+
+<section id="start">
+  <h2>Getting started</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <ul>
+    <li>Patch an audio source into <b>Input L</b> (and <b>R</b> for stereo — it is summed to mono for shifting). A clear, monophonic source (voice, synth line, bass, guitar) tracks best.</li>
+    <li>On the <b>Routing</b> page set <b>Output L/R</b>; leave <b>Mix</b> at 100% to hear only the chord, or lower it to blend the dry input back in.</li>
+    <li>On the <b>Scale</b> page choose a <b>Scale</b> preset (or hand-pick notes) and a <b>Root</b>.</li>
+    <li>On the <b>Chord</b> page set <b>Voices</b> to 3. You should now hear a triad tracking the input.</li>
+    <li>Patch a 1V/oct CV into <b>Pitch CV</b> (Routing page) to transpose the chord root, quantised to the scale.</li>
+  </ul>
+  <div class="panel">
+    <div class="label">No specifications</div>
+    <p class="soft" style="margin:0">Unlike Chimera, Hydra reserves a fixed buffer and takes no add-time specifications — just add the algorithm and patch.</p>
+  </div>
+</section>
+
+<section id="track">
+  <h2>Tracking &amp; root</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <p>Hydra does not assume you play a fixed note. With <b>Track</b> on, an autocorrelation tracker (running on a decimated copy of the input, roughly 60–1000&nbsp;Hz) measures the input's fundamental. Each voice is then shifted by <code>voiceNote − inputNote</code>, so the chord lands on true pitches however the input moves. The tracked note is shown top-right of the display as <code>In: …</code>.</p>
+  <p>With <b>Track</b> off, the input is assumed to be playing the <b>Root</b> note, and shifts are computed from there — cheaper and rock-steady for a fixed drone, but it will be out of tune if the source moves.</p>
+  <h3>Pitch CV &amp; Root</h3>
+  <p><b>Pitch CV</b> is a 1V/oct input that chooses the <em>chord root</em>: <code>Root + round(CV×12)</code>, snapped to the nearest active scale note. <b>Root</b> is the reference note (0V) and, with Track off, the assumed input pitch. The tracker sets tuning; Pitch CV and Root set <em>which chord</em>.</p>
+  <p class="soft">The tracker holds its last reading when it can't find a clear fundamental (silence, noise, thick polyphony). It is monophonic — give it one note at a time.</p>
+</section>
+
+<section id="scale">
+  <h2>Scale &amp; quantiser</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <p>The scale does two jobs: it quantises the Pitch-CV root, and (in Scale-stack voicing) it is the ladder the chord climbs.</p>
+  <ul>
+    <li><b>Scale</b> — a preset: Major, Minor, the modes (Dorian…Locrian), Harmonic/Melodic minor, Major/Minor pentatonic, Whole-tone, Chromatic, or <b>Custom</b>.</li>
+    <li><b>Note C … Note B</b> — twelve pitch-class toggles. Active only when <b>Scale</b> is <b>Custom</b> (otherwise greyed out and driven by the preset).</li>
+    <li><b>Root</b> — the reference MIDI note.</li>
+  </ul>
+  <p class="soft">Scale pitch classes are C-based; the Root sets where 0V lands, not which classes are active.</p>
+</section>
+
+<section id="harmony">
+  <h2>Harmony</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <p>How the extra voices are built above the root.</p>
+  <h3>Voicing</h3>
+  <ul>
+    <li><b>Scale-stack</b> — voices climb the active scale by <b>Step</b> degrees (2 = thirds → triads/7ths). Diatonic: the chord always belongs to the scale, and it re-spells as you change key. <b>Inversion</b> applies here.</li>
+    <li><b>Chord-type</b> — voices take intervals from an explicit chromatic table: <code>Maj Min Maj7 Dom7 Min7 Sus2 Sus4 Dim Aug 6 add9 5</code>. Real chord qualities regardless of scale. <b>Chord CV</b> selects the type by voltage (~0.5V per chord, added to the <b>Chord type</b> knob).</li>
+  </ul>
+  <h3>Voice lead &amp; Bass</h3>
+  <ul>
+    <li><b>Voice lead</b> — octave-shifts each voice to sit near its previous note, so chord changes move smoothly instead of leaping. A bonus: smaller shift ratios mean fewer granular artifacts.</li>
+    <li><b>Bass</b> — drops the lowest voice one or two octaves for a root beneath the chord (it takes over voice 1; total voice count is unchanged).</li>
+  </ul>
+</section>
+
+<section id="chord">
+  <h2>The chord</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <ul>
+    <li><b>Voices</b> — 2 to 4 pitch-shifted copies.</li>
+    <li><b>Step</b> — scale degrees between stacked voices (Scale-stack voicing only).</li>
+    <li><b>Inversion</b> — raises the lowest 1–3 voices an octave (Scale-stack voicing).</li>
+    <li><b>Octave</b> — transposes the whole chord ±2 octaves.</li>
+    <li><b>Spread</b> — pans the voices across the stereo field (equal-power).</li>
+    <li><b>Detune</b> — a small per-voice cents offset (root stays pure) for chorusing thickness.</li>
+    <li><b>Glide</b> — portamento on pitch changes. With Track on and a moving input, voices chase continuously.</li>
+  </ul>
+</section>
+
+<section id="lpg">
+  <h2>Triggers &amp; the gate</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <p>Each voice has a low-pass gate — a vactrol-style stage whose envelope drives brightness and level together, so struck notes bloom and darken as they fade. Set <b>LPG</b> to <b>On</b> to enable it; with it Off the voices sound continuously.</p>
+  <h3>Attack–Decay (the swell)</h3>
+  <p>A trigger fires an attack-then-decay envelope. <b>Attack</b> at 0 is an instant pluck; wind it up for a classic swell in. <b>Decay</b> sets the tail. <b>LPG depth</b> blends the gated signal against the raw voice.</p>
+  <h3>Two ways to strike</h3>
+  <ul>
+    <li><b>Trig</b> — the chord trigger. One pulse strikes all voices at once (subject to <b>Strum</b>, below).</li>
+    <li><b>Trig 1–4</b> — a trigger per voice, so a sequencer or drum pattern can arpeggiate the chord.</li>
+  </ul>
+  <p class="soft">Both are live at once: any voice responds to the chord trigger <em>or</em> its own. Per-note triggers ignore Strum and fire immediately.</p>
+</section>
+
+<section id="motion">
+  <h2>Motion &amp; freeze</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <h3>Freeze &amp; Smear</h3>
+  <p><b>Freeze</b> stops writing the buffer, so the voices keep reading captured audio and sustain indefinitely — a pad from a moment. It engages while the <b>Freeze</b> param is on, <em>or</em> the <b>Freeze in</b> gate is held high (tap a footswitch, hold a gate).</p>
+  <p>A raw freeze loops its short buffer audibly. <b>Smear</b> fixes that: each grain jumps to a fresh random position in the frozen buffer every time it wraps, decorrelating the loop into an evolving cloud — a time-domain take on PaulStretch's phase randomisation. At 0 it is a plain frozen loop; at 100 it is a full-buffer cloud. Smear only acts while frozen.</p>
+  <h3>Strum · Vibrato · Env→Filter</h3>
+  <ul>
+    <li><b>Strum</b> / <b>Strum dir</b> — staggers the voices when the chord <b>Trig</b> fires (Up / Down / Random), turning a chord into a strum or arpeggio.</li>
+    <li><b>Vib depth</b> / <b>Vib rate</b> — a global chorus vibrato, with each voice given a phase offset so it shimmers rather than moving in lockstep.</li>
+    <li><b>Env→Filter</b> — an input envelope follower opens the master filter with the dynamics of the source.</li>
+  </ul>
+</section>
+
+<section id="tone">
+  <h2>Grain &amp; tone</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <ul>
+    <li><b>Grain</b> — pitch-shifter grain size. Shorter is tighter and more articulate; longer is smoother but softer on transients.</li>
+    <li><b>Grain sync</b> — when the tracker is confident, snaps the grain length to a whole number of input periods. This aligns grain boundaries to the waveform and markedly reduces the granular warble. Falls back to the <b>Grain</b> time when there is no clear pitch.</li>
+    <li><b>Filter</b> — a state-variable filter on the wet chord: Off, Low-pass, Band-pass, High-pass.</li>
+    <li><b>Cutoff</b> / <b>Resonance</b> — the filter frequency and emphasis (also the target for Env→Filter).</li>
+  </ul>
+</section>
+
+<section id="outs">
+  <h2>Outputs</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <p>Beyond the main stereo mix, every voice can leave on its own jacks — Hydra is a chord brain as much as an effect.</p>
+  <ul>
+    <li><b>Out 1–4</b> — individual audio output per voice, taken post-LPG. A voice with an audio out assigned <em>leaves the main mix</em> so you can process it separately; unassigned voices stay panned in the main output and pass the master filter.</li>
+    <li><b>Pitch 1–4</b> — a 1V/oct CV of each voice's note, to drive external oscillators with the same chord.</li>
+    <li><b>Gate 1–4</b> — a gate that is high while the voice sounds (its LPG envelope is open, or continuously when LPG is Off).</li>
+    <li><b>CV out oct</b> — shifts the pitch-CV octave reference so external voices tune where you need them.</li>
+  </ul>
+  <p class="soft">Pitch/gate outs are written cleanly (replace); individual audio outs are added to their bus — patch them to unused outputs.</p>
+</section>
+
+<section id="display">
+  <h2>The display</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <div class="screen-wrap">
+    <canvas id="screen" width="256" height="64"></canvas>
+    <div class="screen-cap">PERFORMANCE VIEW — chord root, tracked input note, active voices</div>
+  </div>
+  <p><b>R:</b> the current chord root (note + octave). <b>In:</b> the pitch the tracker is hearing (only shown when Track is on). The voice bars show the chord relative to the input; the waveform at the bottom is the live input feeding the buffer.</p>
+</section>
+
+<section id="params">
+  <h2>Parameter reference</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <div class="tblwrap">
+  <table>
+    <thead><tr><th>Parameter</th><th>Range</th><th>Default</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="4">Scale</td></tr>
+      <tr><td>Scale</td><td class="rng">preset</td><td>Major</td><td>Custom = use the Note toggles</td></tr>
+      <tr><td>Note C … B</td><td class="rng">off / on</td><td>major</td><td>Custom scale; greyed unless Scale = Custom</td></tr>
+      <tr><td>Root</td><td class="rng">0–127</td><td>48 (C3)</td><td>Reference note / 0V / assumed pitch (Track off)</td></tr>
+
+      <tr class="grp"><td colspan="4">Harmony</td></tr>
+      <tr><td>Voicing</td><td class="rng">Scale-stack / Chord-type</td><td>Scale-stack</td><td>Diatonic stack vs chromatic chord table</td></tr>
+      <tr><td>Chord type</td><td class="rng">12 chords</td><td>Maj</td><td>Chord-type voicing only</td></tr>
+      <tr><td>Chord CV</td><td class="rng">bus</td><td>none</td><td>Selects chord type, ~0.5V each</td></tr>
+      <tr><td>Voice lead</td><td class="rng">off / on</td><td>off</td><td>Keep voices near their previous notes</td></tr>
+      <tr><td>Bass</td><td class="rng">Off / −1 / −2 oct</td><td>Off</td><td>Drops the lowest voice</td></tr>
+
+      <tr class="grp"><td colspan="4">Chord</td></tr>
+      <tr><td>Voices</td><td class="rng">2–4</td><td>3</td><td>Number of pitch-shifted copies</td></tr>
+      <tr><td>Step</td><td class="rng">1–4</td><td>2</td><td>Scale degrees between voices (Scale-stack)</td></tr>
+      <tr><td>Inversion</td><td class="rng">0–3</td><td>0</td><td>Raise lowest voices an octave (Scale-stack)</td></tr>
+      <tr><td>Octave</td><td class="rng">−2…+2</td><td>0</td><td>Transpose the whole chord</td></tr>
+      <tr><td>Spread</td><td class="rng">0–100%</td><td>50</td><td>Stereo pan of the voices</td></tr>
+      <tr><td>Detune</td><td class="rng">0–50 c</td><td>0</td><td>Per-voice cents (root stays pure)</td></tr>
+      <tr><td>Glide</td><td class="rng">0–100%</td><td>0</td><td>Portamento on pitch changes</td></tr>
+
+      <tr class="grp"><td colspan="4">Motion</td></tr>
+      <tr><td>Freeze</td><td class="rng">off / on</td><td>off</td><td>Sustain the buffer</td></tr>
+      <tr><td>Freeze in</td><td class="rng">bus</td><td>none</td><td>Freeze while gate held high</td></tr>
+      <tr><td>Smear</td><td class="rng">0–100%</td><td>60</td><td>Decorrelate frozen grains (freeze only)</td></tr>
+      <tr><td>Strum</td><td class="rng">0–500 ms</td><td>0</td><td>Stagger voices on the chord trigger</td></tr>
+      <tr><td>Strum dir</td><td class="rng">Up / Down / Random</td><td>Up</td><td>Strum order</td></tr>
+      <tr><td>Vib depth</td><td class="rng">0–50 c</td><td>0</td><td>Vibrato amount</td></tr>
+      <tr><td>Vib rate</td><td class="rng">0.1–12 Hz</td><td>5.0</td><td>Vibrato speed</td></tr>
+      <tr><td>Env→Filter</td><td class="rng">0–100%</td><td>0</td><td>Input dynamics open the filter</td></tr>
+
+      <tr class="grp"><td colspan="4">Tone</td></tr>
+      <tr><td>Grain</td><td class="rng">10–85 ms</td><td>50</td><td>Pitch-shifter grain size</td></tr>
+      <tr><td>Grain sync</td><td class="rng">off / on</td><td>on</td><td>Snap grains to the tracked period</td></tr>
+      <tr><td>Filter</td><td class="rng">Off / LP / BP / HP</td><td>Off</td><td>Master filter type</td></tr>
+      <tr><td>Cutoff</td><td class="rng">20–18000 Hz</td><td>8000</td><td>Filter frequency</td></tr>
+      <tr><td>Resonance</td><td class="rng">0–100%</td><td>10</td><td>Filter emphasis</td></tr>
+
+      <tr class="grp"><td colspan="4">LPG</td></tr>
+      <tr><td>LPG</td><td class="rng">Off / On</td><td>Off</td><td>Enable the per-voice gate</td></tr>
+      <tr><td>Attack</td><td class="rng">0–2000 ms</td><td>5</td><td>Swell time (0 = pluck)</td></tr>
+      <tr><td>Decay</td><td class="rng">5–4000 ms</td><td>300</td><td>Tail time</td></tr>
+      <tr><td>LPG depth</td><td class="rng">0–100%</td><td>100</td><td>Gated vs raw blend</td></tr>
+      <tr><td>Trig</td><td class="rng">bus</td><td>none</td><td>Chord trigger (all voices)</td></tr>
+      <tr><td>Trig 1–4</td><td class="rng">bus</td><td>none</td><td>Per-voice triggers</td></tr>
+
+      <tr class="grp"><td colspan="4">Outs</td></tr>
+      <tr><td>Out 1–4</td><td class="rng">bus</td><td>none</td><td>Per-voice audio; assigned voice leaves the mix</td></tr>
+      <tr><td>Pitch 1–4</td><td class="rng">bus</td><td>none</td><td>1V/oct per voice</td></tr>
+      <tr><td>Gate 1–4</td><td class="rng">bus</td><td>none</td><td>Gate high while the voice sounds</td></tr>
+      <tr><td>CV out oct</td><td class="rng">−4…+4</td><td>0</td><td>Pitch-CV octave reference</td></tr>
+
+      <tr class="grp"><td colspan="4">Routing</td></tr>
+      <tr><td>Input L / R</td><td class="rng">bus</td><td>1 / 2</td><td>Summed to mono</td></tr>
+      <tr><td>Output L / R</td><td class="rng">bus</td><td>13 / 14</td><td>Main stereo out</td></tr>
+      <tr><td>Output mode</td><td class="rng">add / replace</td><td>add</td><td>Main output write mode</td></tr>
+      <tr><td>Pitch CV</td><td class="rng">bus</td><td>none</td><td>1V/oct chord root</td></tr>
+      <tr><td>Mix</td><td class="rng">0–100%</td><td>100</td><td>Dry ↔ wet chord</td></tr>
+      <tr><td>Level</td><td class="rng">−40…+6 dB</td><td>0</td><td>Output level</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="tips">
+  <h2>Field notes</h2>
+  <canvas class="rule" aria-hidden="true"></canvas>
+  <ul>
+    <li><b>Give the tracker one clean note.</b> Monophonic, sustained sources track best. If tuning drifts on noisy material, switch <b>Track</b> off and play the source at the <b>Root</b>.</li>
+    <li><b>Smaller intervals sound cleaner.</b> Granular shifting warbles on big jumps. <b>Voice lead</b> and modest <b>Octave</b> settings keep ratios near 1× and the chord smooth; <b>Grain sync</b> tightens it further.</li>
+    <li><b>Instant pad:</b> hold a note, raise <b>Freeze</b>, turn <b>Smear</b> up, and set a long <b>Attack</b> on the LPG for a slow bloom.</li>
+    <li><b>Diatonic vs. exact:</b> use Scale-stack when you want the chord to follow a key, Chord-type when you want a specific quality (a dom7, a sus) regardless of scale.</li>
+    <li><b>Drive a rack:</b> patch <b>Pitch 1–4</b> and <b>Gate 1–4</b> to external oscillators and envelopes — Hydra becomes a chord sequencer voiced by your own modules, with the audio chord as a bonus layer.</li>
+    <li><b>Strummed keys:</b> Chord-type + a long-ish <b>Strum</b> + per-note decay turns single triggers into rolled chords.</li>
+  </ul>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <span>HYDRA · Disting NT plug-in</span>
+  <span>one head becomes many</span>
+</footer>
+
+<script>
+(function(){
+  // 8x8 Bayer matrix
+  var B8=(function(){
+    var m=[[0,32,8,40,2,34,10,42],[48,16,56,24,50,18,58,26],
+           [12,44,4,36,14,46,6,38],[60,28,52,20,62,30,54,22],
+           [3,35,11,43,1,33,9,41],[51,19,59,27,49,17,57,25],
+           [15,47,7,39,13,45,5,37],[63,31,55,23,61,29,53,21]];
+    return m;
+  })();
+  function hex(c){ return [parseInt(c.substr(1,2),16),parseInt(c.substr(3,2),16),parseInt(c.substr(5,2),16)]; }
+
+  function ditherField(ctx,w,h,colA,colB,fn){
+    var img=ctx.createImageData(w,h), a=hex(colA), b=hex(colB);
+    for(var y=0;y<h;y++) for(var x=0;x<w;x++){
+      var v=fn(x,y,w,h), t=(B8[y&7][x&7]+0.5)/64, c=(v>t)?b:a, i=(y*w+x)*4;
+      img.data[i]=c[0]; img.data[i+1]=c[1]; img.data[i+2]=c[2]; img.data[i+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+  }
+
+  // ---- hero banner: red-on-yellow dither + the creature on the right ------
+  var creature=null;
+  function drawBanner(){
+    var cv=document.getElementById('banner'); if(!cv) return;
+    var scale=3;
+    var w=Math.ceil(cv.clientWidth/scale)||354, h=Math.ceil((cv.clientHeight||290)/scale);
+    var off=document.createElement('canvas'); off.width=w; off.height=h;
+    var octx=off.getContext('2d');
+    // keep the wordmark zone (left, vertically centred) calmer
+    function textClear(x,y,H){
+      var rx=250, up=32, dn=18, fall=10;
+      var fx=(rx-x)/fall, dyv=y-H*0.5;
+      var fy=Math.min((dyv+up)/fall,(dn-dyv)/fall);
+      var s=Math.min(1,Math.max(0,Math.min(fx,fy)));
+      return 1-s*0.9;
+    }
+    // yellow field with red dither rising toward a horizon band
+    ditherField(octx,w,h,'#f0e020','#e11224',function(x,y,W,H){
+      var g=(y/H)*0.55-0.16;
+      var band=Math.exp(-Math.pow((y-H*0.72)/(H*0.13),2))*0.34;
+      return Math.max(0,g+band)*textClear(x,y,H);
+    });
+    cv.width=w*scale; cv.height=h*scale;
+    var ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(off,0,0,cv.width,cv.height);
+    // the creature stands on the right, clear of the wordmark
+    if(creature){
+      var ch=Math.round(cv.height*0.94), cw=Math.round(ch*creature.width/creature.height);
+      ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(creature, cv.width-cw-Math.round(cv.width*0.03), cv.height-ch, cw, ch);
+    }
+  }
+  function prepCreature(done){ var im=new Image(); im.onload=function(){ creature=im; done(); }; im.src='hydra.png'; }
+
+  // ---- pixel wordmark: render HYDRA small, scale up hard --------------------
+  function drawWordmark(){
+    var cv=document.getElementById('wordmark'); if(!cv) return;
+    var px=6, base=document.createElement('canvas');
+    base.width=64; base.height=11;
+    var b=base.getContext('2d');
+    b.imageSmoothingEnabled=false;
+    b.font='bold 10px "Courier New",monospace'; b.textBaseline='top';
+    b.fillStyle='#e11224'; b.fillText('HYDRA',1,0);
+    // darker drop-shadow copy
+    var sh=document.createElement('canvas'); sh.width=base.width; sh.height=base.height;
+    var s=sh.getContext('2d'); s.drawImage(base,0,0);
+    s.globalCompositeOperation='source-in'; s.fillStyle='#6e0a12'; s.fillRect(0,0,sh.width,sh.height);
+    cv.width=(base.width+1)*px; cv.height=(base.height+1)*px;
+    var ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(sh,px,px,base.width*px,base.height*px);
+    ctx.drawImage(base,0,0,base.width*px,base.height*px);
+    cv.style.height=cv.height+'px';
+  }
+
+  // ---- section rules: dithered density ramps ------------------------------
+  function drawRules(){
+    var rules=document.querySelectorAll('canvas.rule');
+    for(var r=0;r<rules.length;r++){
+      var cv=rules[r], scale=2;
+      var w=Math.max(60,Math.ceil((cv.clientWidth||600)/scale)), h=4;
+      var off=document.createElement('canvas'); off.width=w; off.height=h;
+      var octx=off.getContext('2d');
+      ditherField(octx,w,h,'#f6edcf','#e11224',function(x,y,W){ return Math.max(0,1-x/(W*0.9)); });
+      cv.width=w*scale; cv.height=h*scale;
+      var ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(off,0,0,cv.width,cv.height);
+    }
+  }
+
+  // ---- 256x64 performance-view mock ---------------------------------------
+  function drawScreen(){
+    var cv=document.getElementById('screen'); if(!cv) return;
+    var ctx=cv.getContext('2d');
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,256,64);
+    function outlinedText(x,y,label,colour,align){
+      ctx.font='6px monospace'; ctx.textAlign=align||'left';
+      ctx.fillStyle='#000';
+      for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) ctx.fillText(label,x+dx,y+dy);
+      ctx.fillStyle=colour; ctx.fillText(label,x,y);
+    }
+    // three voice bars (a triad), brighter = louder
+    var voices=[{y:20,g:0.55,lbl:'●'},{y:30,g:0.8,lbl:'●'},{y:40,g:1.0,lbl:'●'}];
+    for(var i=0;i<voices.length;i++){
+      var g=Math.round(0x55+0x88*voices[i].g);
+      ctx.fillStyle='rgb('+g+','+g+','+g+')';
+      ctx.fillRect(150,voices[i].y,90,2);
+      ctx.fillRect(150,voices[i].y-1,2,4);
+    }
+    // live input waveform along the bottom
+    ctx.fillStyle='#a8321f';
+    for(var b2=0;b2<128;b2++){
+      var v=Math.abs(Math.sin(b2*0.21)*0.5+Math.sin(b2*0.63)*0.3);
+      var hh=Math.max(1,Math.round(v*8));
+      ctx.fillRect(b2*2,58-hh,1,hh);
+    }
+    // labels
+    outlinedText(6,14,'Hydra','#f0e6d0');
+    outlinedText(6,30,'R: C3','#ff5a4d');
+    outlinedText(6,42,'3 voices','#c9b78d');
+    outlinedText(250,14,'In: E','#ff5a4d','right');
+  }
+
+  function drawAll(){ drawBanner(); drawWordmark(); drawRules(); drawScreen(); }
+  drawAll();
+  prepCreature(drawBanner);
+  var t;
+  window.addEventListener('resize',function(){ clearTimeout(t); t=setTimeout(drawAll,150); });
+})();
+</script>
+
+</body>
+</html>
