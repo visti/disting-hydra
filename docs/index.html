@@ -554,66 +554,51 @@
     ctx.putImageData(img,0,0);
   }
 
-  // ---- hero banner: red-on-yellow dither, cleared behind the creature -----
-  var creature=null, sil=null, SILW=0, SILH=0;
-  // build a dilated silhouette mask from the creature's alpha, so the dither
-  // field can be knocked out behind (and just around) the shape
-  function buildSil(){
-    var o=document.createElement('canvas'); o.width=creature.width; o.height=creature.height;
-    var oc=o.getContext('2d'); oc.drawImage(creature,0,0);
-    var d; try{ d=oc.getImageData(0,0,creature.width,creature.height).data; }catch(e){ return; }
-    SILW=creature.width; SILH=creature.height;
-    var base=new Uint8Array(SILW*SILH);
-    for(var i=0;i<SILW*SILH;i++) base[i]=d[i*4+3]>40?1:0;
-    sil=new Float32Array(SILW*SILH);
-    var R=6;
-    for(var y=0;y<SILH;y++) for(var x=0;x<SILW;x++){
-      var m=0;
-      for(var dy=-R;dy<=R&&m<1;dy++) for(var dx=-R;dx<=R;dx++){
-        var nx=x+dx,ny=y+dy; if(nx<0||ny<0||nx>=SILW||ny>=SILH) continue;
-        if(base[ny*SILW+nx]){ var r=Math.max(Math.abs(dx),Math.abs(dy)); var v=(r<=3)?1:0.5; if(v>m) m=v; if(m>=1) break; }
-      }
-      sil[y*SILW+x]=m;
-    }
-  }
+  // ---- hero banner: red-on-yellow dither, hard-cut behind the creature ----
+  var creature=null, maskImg=null;
   function drawBanner(){
     var cv=document.getElementById('banner'); if(!cv) return;
     var scale=3;
     var w=Math.ceil(cv.clientWidth/scale)||354, h=Math.ceil((cv.clientHeight||290)/scale);
     var FW=w*scale, FH=h*scale;
-    var wide=cv.clientWidth>=760;
+    var wide=cv.clientWidth>=760 && !!creature;
     // creature rect (full-res), right-anchored, standing on the horizon
     var ch=Math.round(FH*0.94), cw=creature?Math.round(ch*creature.width/creature.height):0;
     var cx=FW-cw-Math.round(FW*0.03), cy=FH-ch;
+    // build the knockout mask in field space from the solid silhouette
+    var maskA=null;
+    if(wide && maskImg){
+      var mc=document.createElement('canvas'); mc.width=w; mc.height=h;
+      var mctx=mc.getContext('2d');
+      mctx.drawImage(maskImg, cx/scale, cy/scale, cw/scale, ch/scale);
+      try{ maskA=mctx.getImageData(0,0,w,h).data; }catch(e){ maskA=null; }
+    }
     var off=document.createElement('canvas'); off.width=w; off.height=h;
     var octx=off.getContext('2d');
-    // reserve the wordmark + subtitle zone (left, vertically centred)
+    // hard-clear the wordmark + subtitle band: no dither over the text, ever
     function textClear(x,y,H){
-      var rx=250, up=30, dn=24, fall=12;
+      var rx=250, up=32, dn=30, fall=14;
       var fx=(rx-x)/fall, dyv=y-H*0.5;
       var fy=Math.min((dyv+up)/fall,(dn-dyv)/fall);
       var s=Math.min(1,Math.max(0,Math.min(fx,fy)));
-      return 1-s*0.92;
+      return 1-s;                                   // 0 inside the band
     }
-    // clear the dither where the creature sits (dilated silhouette)
-    function beastClear(x,y){
-      if(!(wide&&sil&&cw)) return 1;
-      var sx=Math.round((x*scale-cx)/cw*SILW), sy=Math.round((y*scale-cy)/ch*SILH);
-      if(sx<0||sy<0||sx>=SILW||sy>=SILH) return 1;
-      return 1-sil[sy*SILW+sx]*0.96;
-    }
-    // yellow field with red dither rising toward a horizon band
     ditherField(octx,w,h,'#f0e020','#e11224',function(x,y,W,H){
+      if(maskA && maskA[(y*w+x)*4+3] > 40) return 0; // hard cut behind creature
       var g=(y/H)*0.55-0.16;
       var band=Math.exp(-Math.pow((y-H*0.72)/(H*0.13),2))*0.34;
-      return Math.max(0,g+band)*textClear(x,y,H)*beastClear(x,y);
+      return Math.max(0,g+band)*textClear(x,y,H);
     });
     cv.width=FW; cv.height=FH;
     var ctx=cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
     ctx.drawImage(off,0,0,FW,FH);
-    if(wide&&creature){ ctx.imageSmoothingEnabled=false; ctx.drawImage(creature,cx,cy,cw,ch); }
+    if(wide){ ctx.imageSmoothingEnabled=false; ctx.drawImage(creature,cx,cy,cw,ch); }
   }
-  function prepCreature(done){ var im=new Image(); im.onload=function(){ creature=im; buildSil(); done(); }; im.src='hydra.png'; }
+  function prepAssets(done){
+    var n=0; function tick(){ if(++n===2) done(); }
+    creature=new Image(); creature.onload=tick; creature.src='hydra.png';
+    maskImg=new Image(); maskImg.onload=tick; maskImg.src='hydra-mask.png';
+  }
 
   // ---- section rules: dithered density ramps ------------------------------
   function drawRules(){
@@ -665,7 +650,7 @@
 
   function drawAll(){ drawBanner(); drawRules(); drawScreen(); }
   drawAll();
-  prepCreature(drawBanner);
+  prepAssets(drawBanner);
   var t;
   window.addEventListener('resize',function(){ clearTimeout(t); t=setTimeout(drawAll,150); });
 })();
